@@ -1,0 +1,96 @@
+plugins {
+	id 'org.springframework.boot' version '2.2.6.RELEASE'
+	id 'io.spring.dependency-management' version '1.0.9.RELEASE'
+	id "com.github.johnrengelman.shadow" version "5.2.0"
+	id "org.springframework.boot.experimental.thin-launcher" version "1.0.23.RELEASE"
+	id 'java'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '11'
+
+configurations {
+	developmentOnly
+	runtimeClasspath {
+		extendsFrom developmentOnly
+	}
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+	testCompile.extendsFrom(compileOnly)
+}
+
+repositories {
+	mavenCentral()
+}
+
+ext {
+	set('springCloudVersion', "Hoxton.SR4")
+	springCloudFunctionVersion = "3.0.1.RELEASE"
+	awsLambdaEventsVersion = "2.2.7"
+	awsLambdaCoreVersion = "1.2.0"
+	awsLambdaLogbackVersion = "1.0.0"
+	commonsIoVersion = "2.6"
+	awsV1Version = "1.11.739"
+	awsV2Version = "2.10.81"
+}
+
+
+assemble.dependsOn = [shadowJar, thinJar]
+
+jar {
+	manifest {
+		attributes 'Main-Class': 'io.disc99.demo.FileUploaderApplication'
+	}
+}
+
+import com.github.jengelman.gradle.plugins.shadow.transformers.*
+
+shadowJar {
+	classifier = 'aws'
+	mergeServiceFiles()
+	append 'META-INF/spring.handlers'
+	append 'META-INF/spring.schemas'
+	append 'META-INF/spring.tooling'
+	transform(PropertiesFileTransformer) {
+		paths = ['META-INF/spring.factories']
+		mergeStrategy = "append"
+	}
+}
+
+dependencies {
+	implementation "org.springframework.boot:spring-boot-starter"
+	implementation "org.springframework.boot:spring-boot-starter-validation"
+	implementation "org.springframework.cloud:spring-cloud-starter-function-webflux"
+
+	implementation "com.amazonaws:aws-java-sdk-s3"
+	implementation "com.amazonaws:aws-lambda-java-core:${awsLambdaCoreVersion}"
+	implementation "com.amazonaws:aws-lambda-java-events:${awsLambdaEventsVersion}"
+	implementation "commons-io:commons-io:${commonsIoVersion}"
+	compile group: 'io.netty', name: 'netty-all', version: '4.1.46.Final'
+
+	// Runtime tools
+	runtimeOnly "org.jlib:jlib-awslambda-logback:${awsLambdaLogbackVersion}"
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	testImplementation('org.springframework.boot:spring-boot-starter-test') {
+		exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+	}
+	testImplementation 'io.projectreactor:reactor-test'
+}
+
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+		mavenBom "com.amazonaws:aws-java-sdk-bom:${awsV1Version}"
+		mavenBom "software.amazon.awssdk:bom:${awsV2Version}"
+	}
+}
+
+
+test {
+	useJUnitPlatform()
+}
